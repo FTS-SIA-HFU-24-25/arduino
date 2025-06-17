@@ -1,13 +1,12 @@
-
+#include "MPU6500_WE.hpp"
 #include <Wire.h>
 #include "Protocentral_MAX30205.h"
-#include <MPU6500_WE.h>
+
 const int csPin = 10;  // Chip Select Pin
 const int mosiPin = 11;  // "MOSI" Pin
 const int misoPin = 12;  // "MISO" Pin
 const int sckPin = 13;  // SCK Pin
 bool useSPI = true;    // SPI use flag
-
 
 MPU6500_WE myMPU6500 = MPU6500_WE(&SPI, csPin, mosiPin, misoPin, sckPin, useSPI);
 MAX30205 tempSensor;
@@ -45,31 +44,36 @@ void setup() {
 
 void loop() {
   xyzFloat gValue = myMPU6500.getGValues();
-  xyzFloat gyr = myMPU6500.getGyrValues();
+  xyzFloat gyr = myMPU6500.getAngles();
   float resultantG = myMPU6500.getResultantG(gValue);
-  float temp = tempSensor.getTemperature() * -1 + 7; // read temperature for every 100ms
+  float temp = tempSensor.getTemperature() * -1 + 7;
 
-  Serial.println("Acceleration in g (x,y,z):");
-  Serial.print(gValue.x);
-  Serial.print("   ");
-  Serial.print(gValue.y);
-  Serial.print("   ");
-  Serial.println(gValue.z);
-  Serial.print("Resultant g: ");
-  Serial.println(resultantG);
+  // Send acceleration
+  sendFloat(0x01, gValue.x);
+  sendFloat(0x01, gValue.y);
+  sendFloat(0x01, gValue.z);
 
-  Serial.println("Gyroscope data in degrees/s: ");
-  Serial.print(gyr.x);
-  Serial.print("   ");
-  Serial.print(gyr.y);
-  Serial.print("   ");
-  Serial.println(gyr.z);
+  delay(1000);
 
-  Serial.print("Temperature in °C: ");
-  Serial.println(temp, 2);
+  // Send gyroscope data
+  sendFloat(0x03, gyr.x);
+  sendFloat(0x03, gyr.y);
+  sendFloat(0x03, gyr.z);
 
-  Serial.println("********************************************");
-  myMPU6500.autoOffsets();
+  delay(1000);
+
+  // Send temperature
+  sendFloat(0x04, temp);
 
   delay(1000);
 }
+
+void sendFloat(byte prefix, float value) {
+  byte* bytePtr = (byte*) &value;
+  Serial.write(prefix);
+  for (int i = 0; i < 4; i++) {
+    Serial.write(bytePtr[i]);
+  }
+}
+
+
