@@ -17,7 +17,7 @@ ECG = 0x04
 HEADER = 0xAA
 
 # === UDP Settings ===
-UDP_IP = "127.0.0.1"
+UDP_IP = "192.168.178.135"
 UDP_PORT = 3000
 
 # === UDP Send Function ===
