@@ -3,60 +3,82 @@ import struct
 import random
 import time
 
-# Prefix constants
-ACCEL_PREFIX = 0x01
-GYRO_PREFIX = 0x03
-TEMP_PREFIX = 0x04
-
-UDP_IP = "127.0.0.1"
+# === UDP Settings ===
+UDP_IP = "192.168.178.135"
 UDP_PORT = 3000
 
-def send_udp(data):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(data, (UDP_IP, UDP_PORT))
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+# === Payload Labels ===
+LABEL_ECG = 0
+LABEL_TEMP = 1
+LABEL_GYRO = 2
+LABEL_ACCEL = 3
+
+
+# === Helper Functions ===
 def float32_bytes(value):
-    return struct.pack('<f', value)  # little-endian float32
+    return struct.pack('<f', value)
 
-def simulate_data():
-    try:
-        while True:
-            # Simulate accelerometer data
-            accel_x = random.uniform(-2, 2)
-            accel_y = random.uniform(-2, 2)
-            accel_z = random.uniform(-2, 2)
-            accel_payload = (
-                bytes([3]) +
-                float32_bytes(accel_x) +
-                float32_bytes(accel_y) +
-                float32_bytes(accel_z)
-            )
-            send_udp(accel_payload)
-            print(f"Acceleration (g): x={accel_x:.2f}, y={accel_y:.2f}, z={accel_z:.2f}")
 
-            # Simulate gyroscope data
-            gyro_x = random.uniform(-90, 90)
-            gyro_y = random.uniform(-90, 90)
-            gyro_z = random.uniform(-90, 90)
-            gyro_payload = (
-                bytes([2]) +
-                float32_bytes(gyro_x) +
-                float32_bytes(gyro_y) +
-                float32_bytes(gyro_z)
-            )
-            send_udp(gyro_payload)
-            print(f"Gyroscope (°/s): x={gyro_x:.2f}, y={gyro_y:.2f}, z={gyro_z:.2f}")
+def send_udp(payload):
+    sock.sendto(payload, (UDP_IP, UDP_PORT))
 
-            # Simulate temperature data
-            temp = random.uniform(20.0, 40.0)
-            temp_payload = bytes([1]) + float32_bytes(temp)
-            send_udp(temp_payload)
-            print(f"Temperature (°C): {temp:.2f}")
 
-            time.sleep(1)  # wait 1 second before next set
+# === Random Data Generator ===
+def generate_and_send_data():
+    while True:
+        # === Simulate ECG (2 samples of 10-bit ECG data) ===
+        ecg1 = random.randint(0, 1023)
+        ecg2 = random.randint(0, 1023)
 
-    except KeyboardInterrupt:
-        print("\nSimulation stopped by user.")
+        payload_ecg = (
+            bytes([LABEL_ECG]) +
+            bytes([(ecg1 >> 8) & 0x03, ecg1 & 0xFF]) +
+            bytes([(ecg2 >> 8) & 0x03, ecg2 & 0xFF])
+        )
+        send_udp(payload_ecg)
+        print(f"ECG: {ecg1}, {ecg2}")
 
-simulate_data()
+        # === Simulate Temperature ===
+        temp = round(random.uniform(25.0, 37.0), 2)
+        payload_temp = bytes([LABEL_TEMP]) + float32_bytes(temp)
+        send_udp(payload_temp)
+        print(f"Temperature: {temp:.2f} °C")
+
+        # === Simulate Accelerometer (X, Y, Z in g) ===
+        accel_x = round(random.uniform(-2.0, 2.0), 2)
+        accel_y = round(random.uniform(-2.0, 2.0), 2)
+        accel_z = round(random.uniform(-2.0, 2.0), 2)
+
+        payload_accel = (
+            bytes([LABEL_ACCEL]) +
+            float32_bytes(accel_x) +
+            float32_bytes(accel_y) +
+            float32_bytes(accel_z)
+        )
+        send_udp(payload_accel)
+        print(f"Accel (g): x={accel_x}, y={accel_y}, z={accel_z}")
+
+        # === Simulate Gyroscope (X, Y, Z in deg/s) ===
+        gyro_x = round(random.uniform(-250.0, 250.0), 2)
+        gyro_y = round(random.uniform(-250.0, 250.0), 2)
+        gyro_z = round(random.uniform(-250.0, 250.0), 2)
+
+        payload_gyro = (
+            bytes([LABEL_GYRO]) +
+            float32_bytes(gyro_x) +
+            float32_bytes(gyro_y) +
+            float32_bytes(gyro_z)
+        )
+        send_udp(payload_gyro)
+        print(f"Gyro (dps): x={gyro_x}, y={gyro_y}, z={gyro_z}")
+
+        print("-" * 50)
+
+        time.sleep(1)  # Send new data every 1 second
+
+
+if __name__ == "__main__":
+    generate_and_send_data()
 
