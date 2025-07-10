@@ -2,18 +2,18 @@
 #include <Wire.h>
 #include "Protocentral_MAX30205.h"
 
-// === Pin Definitions ===
+// Pin Definitions
 const int csPin = 10;
 const int mosiPin = 11;
 const int misoPin = 12;
 const int sckPin = 13;
 const int ecgPin = A0;
 
-// === Sensor Objects ===
+// 6-axis Sensor Objects
 MPU6500_WE myMPU6500 = MPU6500_WE(&SPI, csPin, mosiPin, misoPin, sckPin, true);
 MAX30205 tempSensor;
 
-// === Timer for Misc Data ===
+// Timer for gyro/accel/temperature data
 unsigned long previousMillis = 0;
 const unsigned long interval = 5000; // every 3 seconds
 
@@ -28,7 +28,6 @@ void setup() {
     Serial.println("MPU9250 is connected");
   }
 
-  // === MPU6500 Setup ===
   myMPU6500.enableGyrDLPF();
   //myMPU9250.disableGyrDLPF(MPU9250_BW_WO_DLPF_8800); // bandwdith without DLPF
   myMPU6500.setGyrDLPF(MPU9250_DLPF_6);
@@ -38,7 +37,6 @@ void setup() {
   myMPU6500.enableAccDLPF(true);
   myMPU6500.setAccDLPF(MPU9250_DLPF_6);
 
-  // === Temperature Sensor Setup ===
   while (!tempSensor.scanAvailableSensors()) {
     delay(30000); // Wait until sensor is available
   }
@@ -46,25 +44,18 @@ void setup() {
 }
 
 void loop() {
-  // === Read ECG and Send ===
   int ecgValue = analogRead(ecgPin);
   sendECG(ecgValue);
 
-  // === Send Misc Data Periodically ===
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
     sendMiscData();
   }
 
-  delay(10); // ECG sampling every 10ms
+  delay(5); // ECG sampling every 10ms
 }
 
-// =======================================
-// === Data Sending Functions ===
-// =======================================
-
-// Send Float with Frame
 void sendFloat(byte type, float value) {
   byte* bytePtr = (byte*) &value;
   byte checksum = 0xAA + type;
