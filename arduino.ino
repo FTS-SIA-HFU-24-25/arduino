@@ -9,22 +9,24 @@ const int misoPin = 12;
 const int sckPin = 13;
 const int ecgPin = A0;
 
+const int leadPo = 6;
+const int leadNe = 7;
+
 // 6-axis Sensor Objects
 MPU6500_WE myMPU6500 = MPU6500_WE(&SPI, csPin, mosiPin, misoPin, sckPin, true);
 MAX30205 tempSensor;
 
 // Timer for gyro/accel/temperature data
 unsigned long previousMillis = 0;
-const unsigned long interval = 5000; // every 3 seconds
+const unsigned long interval = 5000;  // every 5 seconds
 
 void setup() {
   Serial.begin(115200);
   Wire.begin();
   delay(1000);
-  if(!myMPU6500.init()){
+  if (!myMPU6500.init()) {
     Serial.println("MPU9250 does not respond");
-  }
-  else{
+  } else {
     Serial.println("MPU9250 is connected");
   }
 
@@ -38,14 +40,19 @@ void setup() {
   myMPU6500.setAccDLPF(MPU9250_DLPF_6);
 
   while (!tempSensor.scanAvailableSensors()) {
-    delay(30000); // Wait until sensor is available
+    delay(30000);  // Wait until sensor is available
   }
   tempSensor.begin();
+
+  pinMode(leadPo, INPUT);
+  pinMode(leadNe, INPUT);
 }
 
 void loop() {
-  int ecgValue = analogRead(ecgPin);
-  sendECG(ecgValue);
+  if((digitalRead(leadPo) == 0) && (digitalRead(leadNe) == 1)){
+    int ecgValue = analogRead(ecgPin);
+    sendECG(ecgValue);
+  }
 
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {
@@ -53,13 +60,13 @@ void loop() {
     sendMiscData();
   }
 
-  delay(5); // ECG sampling every 10ms
+  delay(5);  // ECG sampling every 5ms
 }
 
 void sendFloat(byte type, float value) {
-  byte* bytePtr = (byte*) &value;
+  byte* bytePtr = (byte*)&value;
   byte checksum = 0xAA + type;
-  
+
   Serial.write(0xAA);  // Start frame
   Serial.write(type);  // Data type
 
@@ -68,7 +75,7 @@ void sendFloat(byte type, float value) {
     checksum += bytePtr[i];
   }
 
-  Serial.write(checksum); // Checksum
+  Serial.write(checksum);  // Checksum
 }
 
 // Send ECG as 2-byte data
@@ -77,11 +84,11 @@ void sendECG(int value) {
   byte lsb = value & 0xFF;
   byte checksum = 0xAA + 0x04 + msb + lsb;
 
-  Serial.write(0xAA);    // Start frame
-  Serial.write(0x04);    // ECG data type
+  Serial.write(0xAA);  // Start frame
+  Serial.write(0x04);  // ECG data type
   Serial.write(msb);
   Serial.write(lsb);
-  Serial.write(checksum); // Checksum
+  Serial.write(checksum);  // Checksum
 }
 
 // Send Miscellaneous Data: Accel, Gyro, Temp
@@ -90,7 +97,7 @@ void sendMiscData() {
   xyzFloat gValue = myMPU6500.getGValues();
   float temp = tempSensor.getTemperature() * -1 + 7;
 
-  // Acceleration X/Y/Z
+  // Acceleration
   sendFloat(0x11, gValue.x);
   sendFloat(0x12, gValue.y);
   sendFloat(0x13, gValue.z);

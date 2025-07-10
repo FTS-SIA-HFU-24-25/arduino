@@ -4,7 +4,7 @@ import random
 import time
 
 # === UDP Settings ===
-UDP_IP = "195.201.226.164"
+UDP_IP = "localhost"
 UDP_PORT = 3000
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
